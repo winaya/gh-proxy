@@ -25,7 +25,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}  # 声明镜像源
           username: ${{ github.actor }}  # 当前github 用户名
-          password: ${{ secrets.GH_TOKEN }} # 需要去 https://github.com/settings/tokens 生成一个 名为 token，注意此token 需要读写 packages 等权限
+          password: ${{ secrets.GITHUB_TOKEN }} # 需要去 https://github.com/settings/tokens 生成一个 名为 token，注意此token 需要读写 packages 等权限
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
