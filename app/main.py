@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import os
 import re
 
 import requests
 from flask import Flask, Response, redirect, request
+from flask.cli import load_dotenv
 from requests.exceptions import (
     ChunkedEncodingError,
     ContentDecodingError, ConnectionError, StreamConsumedError)
@@ -17,6 +19,7 @@ from urllib.parse import quote
 jsdelivr = 0
 size_limit = 1024 * 1024 * 1024 * 999  # 允许的文件大小，默认999GB，相当于无限制了 https://github.com/hunshcn/gh-proxy/issues/8
 
+load_dotenv()
 """
   先生效白名单再匹配黑名单，pass_list匹配到的会直接302到jsdelivr而忽略设置
   生效顺序 白->黑->pass，可以前往https://github.com/hunshcn/gh-proxy/issues/41 查看示例
@@ -25,24 +28,30 @@ size_limit = 1024 * 1024 * 1024 * 999  # 允许的文件大小，默认999GB，�
   user1/repo1 # 封禁user1的repo1
   */repo1 # 封禁所有叫做repo1的仓库
 """
-white_list = '''
-'''
-black_list = '''
-'''
-pass_list = '''
-'''
+
+white_list = os.getenv("WHITE_LIST", "")
+black_list = os.getenv("BLACK_LIST", "")
+pass_list = os.getenv("PASS_LIST", "")
+token_dict = os.getenv("TOKEN_LIST", "")
+
+if os.getenv("PROXY"):
+    os.environ['http_proxy'] = os.getenv("PROXY")
+    os.environ['https_proxy'] = os.getenv("PROXY")
 
 HOST = '127.0.0.1'  # 监听地址，建议监听本地然后由web服务器反代
-PORT = 80  # 监听端口
-ASSET_URL = 'https://hunshcn.github.io/gh-proxy'  # 主页
+PORT = 8090  # 监听端口
+INDEX_URL = os.getenv("INDEX_URL")  #首页地址
 
-white_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in white_list.split('\n') if i]
-black_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in black_list.split('\n') if i]
-pass_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in pass_list.split('\n') if i]
+
+white_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in white_list.split(',') if i]
+black_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in black_list.split(',') if i]
+pass_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in pass_list.split(',') if i]
+token_dict = {(i.split(':')[0] if i.split(':')[0].startswith('/') else '/' + i.split(':')[0]): i.split(':')[1] for i in token_dict.split(',') if i and ':' in i}
+
 app = Flask(__name__)
 CHUNK_SIZE = 1024 * 10
-index_html = requests.get(ASSET_URL, timeout=10).text
-icon_r = requests.get(ASSET_URL + '/favicon.ico', timeout=10).content
+index_html = '' if not INDEX_URL else requests.get(INDEX_URL, timeout=10).text
+icon_r = '' if not INDEX_URL else requests.get(INDEX_URL + '/favicon.ico', timeout=10).content
 exp1 = re.compile(r'^(?:https?://)?github\.com/(?P<author>.+?)/(?P<repo>.+?)/(?:releases|archive)/.*$')
 exp2 = re.compile(r'^(?:https?://)?github\.com/(?P<author>.+?)/(?P<repo>.+?)/(?:blob|raw)/.*$')
 exp3 = re.compile(r'^(?:https?://)?github\.com/(?P<author>.+?)/(?P<repo>.+?)/(?:info|git-).*$')
@@ -139,6 +148,7 @@ def handler(u):
     else:
         return Response('Invalid input.', status=403)
 
+    # noinspection PyUnreachableCode
     if (jsdelivr or pass_by) and exp2.match(u):
         u = u.replace('/blob/', '@', 1).replace('github.com', 'cdn.jsdelivr.net/gh', 1)
         return redirect(u)
@@ -156,19 +166,27 @@ def handler(u):
                 url = 'https://' + url[7:]
             return redirect(url)
         u = quote(u, safe='/:')
-        return proxy(u)
+        use_token = None
+        for path, token in token_dict.items():
+            if ('/' + u[8:].split('/', 1)[1]).startswith(path):
+                use_token = token
+                break
+        return proxy(u, token=use_token)
 
 
-def proxy(u, allow_redirects=False):
+def proxy(u, token=None, allow_redirects=False):
     headers = {}
     r_headers = dict(request.headers)
+    if token:
+        r_headers['Authorization'] = f'Bearer {token}'
     if 'Host' in r_headers:
         r_headers.pop('Host')
     try:
         url = u + request.url.replace(request.base_url, '', 1)
         if url.startswith('https:/') and not url.startswith('https://'):
             url = 'https://' + url[7:]
-        r = requests.request(method=request.method, url=url, data=request.data, headers=r_headers, stream=True, allow_redirects=allow_redirects)
+        r = requests.request(method=request.method, url=url, data=request.data, headers=r_headers, stream=True,
+                             allow_redirects=allow_redirects, timeout=10)
         headers = dict(r.headers)
 
         if 'Content-length' in r.headers and int(r.headers['Content-length']) > size_limit:
@@ -183,12 +201,13 @@ def proxy(u, allow_redirects=False):
             if check_url(_location):
                 headers['Location'] = '/' + _location
             else:
-                return proxy(_location, True)
+                return proxy(_location, allow_redirects=True)
 
         return Response(generate(), headers=headers, status=r.status_code)
     except Exception as e:
         headers['content-type'] = 'text/html; charset=UTF-8'
         return Response('server error ' + str(e), status=500, headers=headers)
+
 
 app.debug = True
 if __name__ == '__main__':
