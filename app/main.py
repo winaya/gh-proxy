@@ -42,6 +42,15 @@ HOST = '127.0.0.1'  # 监听地址，建议监听本地然后由web服务器反�
 PORT = 8090  # 监听端口
 INDEX_URL = os.getenv("INDEX_URL")  #首页地址
 
+print("**************************************")
+print("配置如下:")
+print(f"首页地址: {INDEX_URL}")
+print(f"白名单: {white_list}")
+print(f"黑名单: {black_list}")
+print(f"pass列表: {pass_list}")
+print(f"token列表: {token_dict}")
+print(f"代理地址: {os.getenv('PROXY')}")
+print("**************************************")
 
 white_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in white_list.split(',') if i]
 black_list = [tuple([x.replace(' ', '') for x in i.split('/')]) for i in black_list.split(',') if i]
