@@ -30,7 +30,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: delik8shub/streampark
+          images: ghcr.io/${{ github.actor }}/gh_proxy
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
@@ -38,6 +38,7 @@ jobs:
       - name: Build and push streampark
         uses: docker/build-push-action@v3
         with:
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
