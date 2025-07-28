@@ -1,3 +1,5 @@
+#### 在原项目的基础上，python版本加入对github的Fine-grained personal access tokens的支持，同时python版本中用到的一些变量提取成环境变量，具体参考.env进行docker环境变量的配置
+
 # gh-proxy
 
 ## 简介
