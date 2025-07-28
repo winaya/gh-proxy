@@ -2,7 +2,8 @@ name: Publish Image
 
 on:
   push: # push 到主分支自动 发布
-    branches: ["main"]
+    branches: 
+      - "main"
     paths-ignore: # 忽略一些不必要的文件
       - ".gitignore"
       - "README.md"
