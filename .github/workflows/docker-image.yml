@@ -2,16 +2,20 @@ name: Publish Image
 
 on:
   push: # push 到主分支自动 发布
-    branches: 
-      - "main"
+    branches: [ "master" ]
     paths-ignore: # 忽略一些不必要的文件
       - ".gitignore"
       - "README.md"
   pull_request:
     branches: ["main"]
 jobs:
-  build_image:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
