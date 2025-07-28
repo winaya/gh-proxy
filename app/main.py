@@ -184,6 +184,7 @@ def handler(u):
 
 
 def proxy(u, token=None, allow_redirects=False):
+    print(f"代理url:{u} =======  toke:{token}")
     headers = {}
     r_headers = dict(request.headers)
     if token:
