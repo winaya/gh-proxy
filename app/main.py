@@ -32,7 +32,7 @@ load_dotenv()
 white_list = os.getenv("WHITE_LIST", "")
 black_list = os.getenv("BLACK_LIST", "")
 pass_list = os.getenv("PASS_LIST", "")
-token_dict = os.getenv("TOKEN_LIST", "")
+token_dict = os.getenv("TOKEN_LIST", "").replace('"','')
 
 if os.getenv("PROXY"):
     os.environ['http_proxy'] = os.getenv("PROXY")
